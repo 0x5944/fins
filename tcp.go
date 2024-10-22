@@ -130,7 +130,7 @@ func (c *TcpClient) ReadWordsToUint32(memoryArea byte, address uint16, readCount
 	return data, nil
 }
 
-//  读取plc连续数据(byte)地址区域
+// 读取plc连续数据(byte)地址区域
 func (c *TcpClient) ReadBytes(memoryArea byte, address uint16, readCount uint16) ([]byte, error) {
 	if checkIsWordMemoryArea(memoryArea) == false {
 		return nil, IncompatibleMemoryAreaError{memoryArea}
@@ -335,13 +335,13 @@ func (c *TcpClient) sendCommand(command []byte) (*response, error) {
 	if err != nil {
 		return nil, err
 	}
-	header.serviceID = 0
+	// header.serviceID = 0
 	log.Println("send serviceID:", header.serviceID)
 
 	// if response timeout is zero, block indefinitely
 	if c.responseTimeoutMs > 0 {
 		select {
-		case resp := <-c.resp[0]:
+		case resp := <-c.resp[1]:
 			log.Println("send serviceID:", header.serviceID)
 			return &resp, nil
 		case <-time.After(c.responseTimeoutMs * time.Millisecond):
@@ -367,11 +367,10 @@ func (c *TcpClient) listenLoop() {
 		}
 
 		if n > 0 {
-			ans := decodeResponse(buf[:n])
-			log.Println("buf:", buf)
-			log.Println("rec serviceID:", ans.header.serviceID)
+			ans := decodeResponse(buf[16:n])
+			log.Println("buf:", buf[16:n])
 			log.Println("ans:", ans)
-			c.resp[ans.header.serviceID] <- ans
+			c.resp[1] <- ans
 		} else {
 			log.Println("cannot read response: ", buf)
 		}
@@ -423,7 +422,7 @@ func (c *TcpClient) encodeHeader(h Header) []byte {
 		icf, 0x00, h.gatewayCount,
 		h.dst.network, h.dst.node, h.dst.unit,
 		h.src.network, h.src.node, h.src.unit,
-		0,
+		1,
 	}
 	return bytes
 }
